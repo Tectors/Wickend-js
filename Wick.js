@@ -132,6 +132,8 @@ module.exports = class Wick {
      * @returns Array
      */
     async extract() {
+        const errors = {};
+
         await this.whiler(this.directory, (directory) => {
             const path = this.path + directory;
 
@@ -142,6 +144,8 @@ module.exports = class Wick {
                     try {
                         resolve(new Extractor(path, key));
                     } catch(err) {
+                        if(!errors[err.message]) errors[err.message] = [];
+                        errors[err.message].push({directory, key});
                         if(this.log) this.log('\x1b[31m%s\x1b[0m', `Package ${directory} failed using ${key}`);
                         resolve(null);
                     }
@@ -160,6 +164,20 @@ module.exports = class Wick {
                 } else resolve(null);
             });
         });
+
+        if(this.log) {
+            this.log('|', '\x1b[32mSTAT\x1b[0m', '\x1b[31mISTICS\x1b[0m'.replace(/ /g, ''), '|')
+            this.log('\x1b[32m%s\x1b[0m', `${Object.keys(this.extractors).length} packages that successfully were extracted.`);
+            this.log('\x1b[31m%s\x1b[0m', `${this.directory.length - Object.keys(this.extractors).length} packages that failed.`);
+
+            if(Object.keys(errors).length > 0) {
+                console.error(`List of errors that happened should be below.`);
+                this.log(errors);
+            }
+        }
+
+        if(Object.keys(errors).find(e => e.trim().startsWith('File Error: The system cannot find the file specified.') && errors[e].length > 30)) console.error('Too many not found pak files, make sure the path you provided is to the *Paks* folder and is correct, also include a extra \\\\ at the end of your path.');
+        if(Object.keys(this.extractors).length === 0) return console.error('Failed to extract any files, make sure you have oo2core_8_win64 or any other kind of ddl, or if you\'re missing the pak files in the paks folder, only global files are needed to be in the paks folder.');
 
         this.extracted = true;
         return this.extractors;
@@ -191,7 +209,7 @@ module.exports = class Wick {
                                 this.sorted[type][type === 'NpcItems' ? f.split('/').pop().split('.')[0].split('TandemCharacterData_')[1] : f.split('/').pop().split('.')[0]] = json;
                             }
                         } catch(error) {
-                            // console.error(error.message.replace(/\n/g, ''));
+                            console.error(error.message.replace(/\n/g, ''));
                         }
                     });
 
